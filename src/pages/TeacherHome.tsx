@@ -20,6 +20,7 @@ export default function TeacherHome() {
   async function loadData() {
     try {
       setLoading(true);
+      await api.checkStock().catch(() => {});
       const [coursesData, notifData] = await Promise.all([
         api.getCourses() as Promise<Course[]>,
         api.getNotifications() as Promise<{ notifications: Notification[]; unreadCount: number }>,

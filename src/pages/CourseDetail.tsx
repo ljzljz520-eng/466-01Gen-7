@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import type { Enrollment } from '../../shared/types';
 import { Clock, MapPin, User, Package, Store, Truck, CheckCircle2, AlertCircle } from 'lucide-react';
 import Header from '../components/Header';
 import type { Course, PickupType } from '../../shared/types';
@@ -62,12 +63,12 @@ export default function CourseDetail() {
 
     try {
       setSubmitting(true);
-      await api.createEnrollment({
+      const result = await api.createEnrollment({
         courseId: course.id,
         ...form,
-      });
+      }) as Enrollment;
       triggerRefresh();
-      navigate(`/success/${course.id}`);
+      navigate(`/success/${course.id}`, { state: { enrollment: result } });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '报名失败';
       alert(message);

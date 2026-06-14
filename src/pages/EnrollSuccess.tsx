@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, Home, Calendar, Store, Truck } from 'lucide-react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { CheckCircle, Home, Calendar, Store, Truck, MapPin, User } from 'lucide-react';
 import Header from '../components/Header';
-import type { Course } from '../../shared/types';
+import type { Course, Enrollment } from '../../shared/types';
 import { api } from '../utils/api';
 import { formatDateRange, formatPrice, pickupLabels } from '../utils/format';
 
 export default function EnrollSuccess() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [course, setCourse] = useState<Course | null>(null);
+  const enrollment = (location.state as { enrollment?: Enrollment })?.enrollment;
 
   useEffect(() => {
     if (id) loadCourse();
@@ -60,16 +62,41 @@ export default function EnrollSuccess() {
             </div>
 
             <div className="pt-4 border-t border-clay-100 space-y-3">
+              {enrollment && (
+                <>
+                  <div className="flex items-center gap-2 text-sm">
+                    <User size={16} className="text-clay-400" />
+                    <span className="text-clay-500">学员姓名：</span>
+                    <span className="text-ink font-medium">{enrollment.studentName}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <User size={16} className="text-clay-400" />
+                    <span className="text-clay-500">参与人数：</span>
+                    <span className="text-ink font-medium">{enrollment.participantCount} 人</span>
+                  </div>
+                </>
+              )}
               <div className="flex items-center gap-2 text-sm">
-                <Store size={16} className="text-clay-400" />
+                {enrollment?.pickupType === 'store' ? <Store size={16} className="text-clay-400" /> : <Truck size={16} className="text-clay-400" />}
                 <span className="text-clay-500">领取方式：</span>
-                <span className="text-ink font-medium">{pickupLabels.store}</span>
+                <span className="text-ink font-medium">
+                  {enrollment ? pickupLabels[enrollment.pickupType] : pickupLabels.store}
+                </span>
               </div>
-              <div className="flex items-start gap-2 text-sm">
-                <Truck size={16} className="text-clay-400 mt-0.5" />
-                <span className="text-clay-500">上课地点：</span>
-                <span className="text-ink">{course.location}</span>
-              </div>
+              {enrollment?.pickupType === 'delivery' && enrollment.deliveryAddress && (
+                <div className="flex items-start gap-2 text-sm">
+                  <MapPin size={16} className="text-clay-400 mt-0.5" />
+                  <span className="text-clay-500">收货地址：</span>
+                  <span className="text-ink">{enrollment.deliveryAddress}</span>
+                </div>
+              )}
+              {(!enrollment || enrollment.pickupType === 'store') && (
+                <div className="flex items-start gap-2 text-sm">
+                  <MapPin size={16} className="text-clay-400 mt-0.5" />
+                  <span className="text-clay-500">上课地点：</span>
+                  <span className="text-ink">{course.location}</span>
+                </div>
+              )}
             </div>
           </div>
         )}

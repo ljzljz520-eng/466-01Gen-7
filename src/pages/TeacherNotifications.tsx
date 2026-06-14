@@ -14,7 +14,18 @@ export default function TeacherNotifications() {
 
   useEffect(() => {
     loadNotifications();
+    checkStockAutomatically();
   }, []);
+
+  async function checkStockAutomatically() {
+    try {
+      await api.checkStock();
+      const data = await api.getNotifications() as { notifications: Notification[]; unreadCount: number };
+      setNotifications(data.notifications, data.unreadCount);
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   async function loadNotifications() {
     try {
@@ -119,9 +130,31 @@ export default function TeacherNotifications() {
                         <span className="w-2 h-2 rounded-full bg-terracotta-500 flex-shrink-0" />
                       )}
                     </div>
-                    <p className="text-sm text-clay-500 leading-relaxed mb-1.5 line-clamp-2">
+                    <p className="text-sm text-clay-500 leading-relaxed mb-2 line-clamp-2">
                       {notif.message}
                     </p>
+                    {notif.type === 'stock_warning' && (
+                      <div className="flex gap-2 mb-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/teacher/course/${notif.courseId}`);
+                          }}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-terracotta-50 text-terracotta-600 font-medium"
+                        >
+                          去改班
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/teacher/course/${notif.courseId}`);
+                          }}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-forest-50 text-forest-600 font-medium"
+                        >
+                          去补货
+                        </button>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-clay-400">{formatDate(notif.createdAt)}</span>
                       <ChevronRight size={16} className="text-clay-300" />

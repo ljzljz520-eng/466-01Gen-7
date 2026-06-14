@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { Package, Users, Store, Truck, Edit3, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Package, Users, Store, Truck, Edit3, CheckCircle2, AlertTriangle, Calendar, MapPin, Clock, Save, X, User } from 'lucide-react';
 import Header from '../components/Header';
 import type { Course, Enrollment } from '../../shared/types';
 import { api } from '../utils/api';
@@ -9,12 +9,22 @@ import { useAppStore } from '../store/appStore';
 
 export default function TeacherCourseDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [course, setCourse] = useState<Course | null>(null);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingStock, setEditingStock] = useState(false);
   const [newStock, setNewStock] = useState(0);
   const [savingStock, setSavingStock] = useState(false);
+  const [editingCourse, setEditingCourse] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    startTime: '',
+    endTime: '',
+    location: '',
+    maxStudents: 0,
+  });
+  const [savingCourse, setSavingCourse] = useState(false);
   const { triggerRefresh } = useAppStore();
 
   useEffect(() => {
@@ -54,6 +64,44 @@ export default function TeacherCourseDetail() {
     }
   }
 
+  function handleStartEditCourse() {
+    if (!course) return;
+    setEditForm({
+      title: course.title,
+      startTime: course.startTime.slice(0, 16),
+      endTime: course.endTime.slice(0, 16),
+      location: course.location,
+      maxStudents: course.maxStudents,
+    });
+    setEditingCourse(true);
+  }
+
+  async function handleSaveCourse() {
+    if (!course || !editForm.title || !editForm.startTime || !editForm.endTime || !editForm.location) {
+      alert('请填写完整信息');
+      return;
+    }
+    try {
+      setSavingCourse(true);
+      const updated = await api.updateCourse(course.id, {
+        title: editForm.title,
+        startTime: new Date(editForm.startTime).toISOString(),
+        endTime: new Date(editForm.endTime).toISOString(),
+        location: editForm.location,
+        maxStudents: editForm.maxStudents,
+      }) as Course;
+      setCourse(updated);
+      setEditingCourse(false);
+      triggerRefresh();
+      api.checkStock().catch(() => {});
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '保存失败';
+      alert(msg);
+    } finally {
+      setSavingCourse(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen">
@@ -89,21 +137,116 @@ export default function TeacherCourseDetail() {
         <div className="card overflow-hidden">
           <img src={course.coverImage} alt={course.title} className="w-full h-40 object-cover" />
           <div className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <span className={`tag ${categoryColors[course.category]}`}>
-                {categoryLabels[course.category]}
-              </span>
-              {isLowStock && (
-                <span className="tag bg-red-100 text-red-600 animate-pulse-slow flex items-center gap-1">
-                  <AlertTriangle size={12} />
-                  库存不足
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className={`tag ${categoryColors[course.category]}`}>
+                  {categoryLabels[course.category]}
                 </span>
+                {isLowStock && (
+                  <span className="tag bg-red-100 text-red-600 animate-pulse-slow flex items-center gap-1">
+                    <AlertTriangle size={12} />
+                    库存不足
+                  </span>
+                )}
+              </div>
+              {!editingCourse && (
+                <button
+                  onClick={handleStartEditCourse}
+                  className="flex items-center gap-1 text-sm text-terracotta-500 font-medium"
+                >
+                  <Edit3 size={14} />
+                  改班
+                </button>
               )}
             </div>
-            <h1 className="font-serif text-xl font-bold text-ink mb-2">{course.title}</h1>
-            <p className="text-sm text-clay-500 mb-1">讲师：{course.teacher}</p>
-            <p className="text-sm text-clay-500 mb-1">{formatDateTime(course.startTime)}</p>
-            <p className="text-sm text-clay-500">{course.location}</p>
+
+            {editingCourse ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm text-clay-500 mb-1 block">课程名称</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={editForm.title}
+                    onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm text-clay-500 mb-1 block">开始时间</label>
+                    <input
+                      type="datetime-local"
+                      className="input-field text-sm"
+                      value={editForm.startTime}
+                      onChange={e => setEditForm({ ...editForm, startTime: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-clay-500 mb-1 block">结束时间</label>
+                    <input
+                      type="datetime-local"
+                      className="input-field text-sm"
+                      value={editForm.endTime}
+                      onChange={e => setEditForm({ ...editForm, endTime: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-clay-500 mb-1 block">上课地点</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={editForm.location}
+                    onChange={e => setEditForm({ ...editForm, location: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-clay-500 mb-1 block">最大人数</label>
+                  <input
+                    type="number"
+                    className="input-field"
+                    min={1}
+                    value={editForm.maxStudents}
+                    onChange={e => setEditForm({ ...editForm, maxStudents: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    className="btn-primary flex-1 !py-2.5"
+                    onClick={handleSaveCourse}
+                    disabled={savingCourse}
+                  >
+                    <Save size={16} className="inline mr-1.5" />
+                    {savingCourse ? '保存中...' : '保存修改'}
+                  </button>
+                  <button
+                    className="btn-secondary flex-1 !py-2.5"
+                    onClick={() => setEditingCourse(false)}
+                  >
+                    <X size={16} className="inline mr-1.5" />
+                    取消
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h1 className="font-serif text-xl font-bold text-ink mb-2">{course.title}</h1>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-sm text-clay-500">
+                    <User size={14} />
+                    <span>讲师：{course.teacher}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-clay-500">
+                    <Calendar size={14} />
+                    <span>{formatDateTime(course.startTime)}</span>
+                  </div>
+                  <div className="flex items-start gap-2 text-sm text-clay-500">
+                    <MapPin size={14} className="mt-0.5 flex-shrink-0" />
+                    <span>{course.location}</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
